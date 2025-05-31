@@ -1,54 +1,55 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
-struct Person;
+fn init_status(mut commands: Commands) {
+    println!("init_status")
+}
 
-#[derive(Component)]
-struct Name(String);
+fn show_status(git_status: ResMut<GitStatus>) {
+    for x in git_status.0.iter() {
+        println!("{} - {}", x.0, x.1)
+    }
+}
 
 #[derive(Resource)]
-struct GreetTimer(Timer);
+struct GitStatus(Vec<GitStatusFile>);
 
-fn add_people(mut commands: Commands) {
-    commands.spawn((Person, Name("Test1".to_string())));
-    commands.spawn((Person, Name("Test2".to_string())));
-    commands.spawn((Person, Name("Test3".to_string())));
+struct GitStatusFile(String, String);
+
+#[derive(Resource)]
+struct GitStatusTimer(Timer);
+
+pub struct GitStatusPlugin;
+
+impl GitStatusPlugin {}
+
+fn format_git_status_file(gs_file: &str) -> GitStatusFile {
+    let trimmed = gs_file.trim();
+    let mut split = trimmed.split(' ');
+    let git_type = split.next().unwrap();
+    let git_file = split.next().unwrap();
+    GitStatusFile(git_type.to_string(), git_file.to_string())
 }
 
-fn hello_world() {
-    println!("hello world!");
-}
-
-fn greet_people(time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Name, With<Person>>) {
-    if timer.0.tick(time.delta()).just_finished() {
-        for name in &query {
-            println!("hello {}!", name.0);
-        }
-    }
-}
-
-fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    for mut name in &mut query {
-        if name.0 == "Test2" {
-            name.0 = "Changed2".to_string();
-            break;
-        }
-    }
-}
-
-pub struct HelloPlugin;
-
-impl Plugin for HelloPlugin {
+impl Plugin for GitStatusPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(GreetTimer(Timer::from_seconds(2.0, TimerMode::Repeating)));
-        app.add_systems(Startup, add_people);
-        app.add_systems(Update, (hello_world, (update_people, greet_people).chain()));
+        let git_status =
+            " D LICENSE\n M src/main.rs\n?? README.md\n?? src/awesome.rs\n".to_string();
+        let files = git_status
+            .lines()
+            .map(format_git_status_file)
+            .collect::<Vec<GitStatusFile>>();
+        app.insert_resource(GitStatus(files));
+        app.insert_resource(GitStatusTimer(Timer::from_seconds(
+            5.0,
+            TimerMode::Repeating,
+        )));
+        app.add_systems(Startup, (init_status, show_status));
     }
 }
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(HelloPlugin)
+        .add_plugins(GitStatusPlugin)
         .run();
 }
