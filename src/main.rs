@@ -1,14 +1,55 @@
 use bevy::prelude::*;
 
-fn init_status(mut commands: Commands) {
-    println!("init_status")
+fn init_status(mut commands: Commands, git_status: ResMut<GitStatus>) {
+    println!("init_status");
+    commands.spawn(Camera2d);
+
+    let text_font = TextFont {
+        font_size: 32.0,
+        ..default()
+    };
+
+    commands
+        .spawn((
+            Node {
+                width: Val::Percent(15.),
+                height: Val::Percent(80.),
+                top: Val::Percent(10.),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Start,
+                justify_items: JustifyItems::Start,
+                padding: UiRect::all(Val::Px(12.)),
+                row_gap: Val::Px(12.),
+                ..Default::default()
+            },
+            BackgroundColor(Color::WHITE),
+        ))
+        .with_children(|builder| {
+            for x in git_status.0.iter() {
+                builder
+                    .spawn((
+                        Node {
+                            width: Val::Percent(15.),
+                            height: Val::Px(40.),
+                            align_items: AlignItems::Start,
+                            justify_items: JustifyItems::Start,
+                            flex_direction: FlexDirection::Row,
+                            ..Default::default()
+                        },
+                        BackgroundColor(Color::linear_rgb(30., 30., 30.)),
+                    ))
+                    .with_children(|builder| {
+                        builder.spawn((
+                            Text2d::new(x.1.clone()),
+                            text_font.clone(),
+                            TextColor::BLACK,
+                        ));
+                    });
+            }
+        });
 }
 
-fn show_status(git_status: ResMut<GitStatus>) {
-    for x in git_status.0.iter() {
-        println!("{} - {}", x.0, x.1)
-    }
-}
+fn show_status(mut commands: Commands) {}
 
 #[derive(Resource)]
 struct GitStatus(Vec<GitStatusFile>);
@@ -52,4 +93,16 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(GitStatusPlugin)
         .run();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn can_parse_status_file() {
+        let result = format_git_status_file("?? src/awesome.rs");
+        assert_eq!(result.0, "??");
+        assert_eq!(result.1, "src/awesome.rs");
+    }
 }
