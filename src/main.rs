@@ -39,25 +39,43 @@ impl GitStatusPlugin {}
 
 impl Plugin for GitStatusPlugin {
     fn build(&self, app: &mut App) {
-        let stdout = Command::new("git")
-            .arg("status")
-            .arg("--porcelain")
-            .output()
-            .unwrap()
-            .stdout;
-        let git_status = str::from_utf8(&stdout).unwrap();
-        println!("{}", git_status);
-        let files = git_status
-            .lines()
-            .map(format_git_status_file)
-            .collect::<Vec<GitStatusFile>>();
-        app.insert_resource(GitStatus(files));
+        app.insert_resource(GitStatus(git_status_porcelain()));
         app.insert_resource(GitStatusTimer(Timer::from_seconds(
             5.0,
             TimerMode::Repeating,
         )));
-        app.add_systems(Startup, (init_status, show_status));
+        app.add_systems(Startup, setup);
+        app.add_systems(Update, (update_status, show_status).chain());
     }
+}
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
+fn update_status(
+    time: Res<Time>,
+    mut timer: ResMut<GitStatusTimer>,
+    mut git_status: ResMut<GitStatus>,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+    git_status.0 = git_status_porcelain();
+}
+
+fn git_status_porcelain() -> Vec<GitStatusFile> {
+    let stdout = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .output()
+        .unwrap()
+        .stdout;
+    let git_status = str::from_utf8(&stdout).unwrap();
+    println!(".");
+    git_status
+        .lines()
+        .map(format_git_status_file)
+        .collect::<Vec<GitStatusFile>>()
 }
 
 fn mod_color(gsf_state: GitStatusFileState) -> TextColor {
@@ -70,8 +88,6 @@ fn mod_color(gsf_state: GitStatusFileState) -> TextColor {
         GitStatusFileState::AddedThenModified => Color::srgba(0.4, 0.2, 0.8, 0.5).into(),
     }
 }
-
-fn init_status(mut commands: Commands) {}
 
 fn spawn_nested_text_bundle(
     builder: &mut ChildSpawnerCommands,
@@ -94,9 +110,7 @@ fn spawn_nested_text_bundle(
         });
 }
 
-fn show_status(mut commands: Commands, status: ResMut<GitStatus>) {
-    commands.spawn(Camera2d);
-
+fn show_status(mut commands: Commands, status: Res<GitStatus>) {
     let font_size = 16.0;
     let text_font = TextFont {
         font_size,
