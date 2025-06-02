@@ -56,12 +56,12 @@ impl Plugin for GitStatusPlugin {
 
 fn mod_color(gsf_state: GitStatusFileState) -> TextColor {
     match gsf_state {
-        GitStatusFileState::Deleted => Color::srgb(0.9, 0., 0.).into(),
-        GitStatusFileState::Modified => Color::srgb(1., 1., 0.).into(),
-        GitStatusFileState::Added => Color::srgb(0., 0., 0.8).into(),
-        GitStatusFileState::NotTracked => Color::srgb(0.6, 0.6, 0.6).into(),
-        GitStatusFileState::ModifiedInBothStages => Color::srgb(0., 0.6, 0.6).into(),
-        GitStatusFileState::AddedThenModified => Color::srgb(0., 0.2, 0.9).into(),
+        GitStatusFileState::Deleted => Color::srgba(0.9, 0., 0., 0.5).into(),
+        GitStatusFileState::Modified => Color::srgba(0.8, 0.8, 0., 0.5).into(),
+        GitStatusFileState::Added => Color::srgba(0.1, 0.2, 0.8, 0.5).into(),
+        GitStatusFileState::NotTracked => Color::srgba(0.6, 0.6, 0.6, 0.5).into(),
+        GitStatusFileState::ModifiedInBothStages => Color::srgba(0., 0.6, 0.6, 0.5).into(),
+        GitStatusFileState::AddedThenModified => Color::srgba(0.4, 0.2, 0.8, 0.5).into(),
     }
 }
 
@@ -94,7 +94,7 @@ fn init_status(mut commands: Commands, status: ResMut<GitStatus>) {
                     text_font.clone(),
                     *mod_color(x.0.clone()),
                     UiRect::top(Val::Px(3.)),
-                    &x.1,
+                    &format!("{} {}", x.0, x.1),
                 );
             }
         });
