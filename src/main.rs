@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, ui::widget::text_system};
 
 #[derive(Resource)]
 struct GitStatus(Vec<GitStatusFile>);
@@ -78,36 +78,46 @@ fn init_status(mut commands: Commands, status: ResMut<GitStatus>) {
     commands
         .spawn((
             Node {
-                width: Val::Percent(15.),
-                height: Val::Percent(80.),
-                top: Val::Percent(10.),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Start,
-                justify_items: JustifyItems::Start,
-                padding: UiRect::all(Val::Px(2.)),
-                row_gap: Val::Px(2.),
-                ..Default::default()
+                justify_content: JustifyContent::Start,
+                width: Val::Percent(15.),
+                height: Val::Percent(100.),
+                ..default()
             },
             BackgroundColor(Color::WHITE),
         ))
         .with_children(|builder| {
             for x in status.0.iter() {
-                builder
-                    .spawn((
-                        Node {
-                            width: Val::Percent(100.),
-                            height: Val::Px(font_size),
-                            align_items: AlignItems::Start,
-                            justify_items: JustifyItems::Start,
-                            ..Default::default()
-                        },
-                        BackgroundColor(Color::linear_rgb(30., 30., 30.)),
-                    ))
-                    .with_children(|builder| {
-                        let color = mod_color(x.0.clone());
-                        builder.spawn((Text2d::new(x.1.clone()), text_font.clone(), color));
-                    });
+                spawn_nested_text_bundle(
+                    builder,
+                    text_font.clone(),
+                    *mod_color(x.0.clone()),
+                    UiRect::top(Val::Px(3.)),
+                    &x.1,
+                );
             }
+        });
+}
+
+fn spawn_nested_text_bundle(
+    builder: &mut ChildSpawnerCommands,
+    text_font: TextFont,
+    background_color: Color,
+    margin: UiRect,
+    text: &str,
+) {
+    builder
+        .spawn((
+            Node {
+                margin,
+                padding: UiRect::axes(Val::Px(5.), Val::Px(1.)),
+                ..default()
+            },
+            BackgroundColor(background_color),
+        ))
+        .with_children(|builder| {
+            builder.spawn((Text::new(text), text_font, TextColor::BLACK));
         });
 }
 
