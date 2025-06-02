@@ -1,4 +1,5 @@
-use bevy::{prelude::*, ui::widget::text_system};
+use bevy::prelude::*;
+use std::process::Command;
 
 #[derive(Resource)]
 struct GitStatus(Vec<GitStatusFile>);
@@ -38,37 +39,78 @@ impl GitStatusPlugin {}
 
 impl Plugin for GitStatusPlugin {
     fn build(&self, app: &mut App) {
-        let git_status =
-            " D lorem\n A ipsum\n M dolor\n?? sit\n?? amet\nAM consecteur\nMM adipiscing\n"
-                .to_string();
-        let files = git_status
-            .lines()
-            .map(format_git_status_file)
-            .collect::<Vec<GitStatusFile>>();
-        app.insert_resource(GitStatus(files));
+        app.insert_resource(GitStatus(git_status_porcelain()));
         app.insert_resource(GitStatusTimer(Timer::from_seconds(
             5.0,
             TimerMode::Repeating,
         )));
-        app.add_systems(Startup, (init_status, show_status));
+        app.add_systems(Startup, setup);
+        app.add_systems(Update, (update_status, show_status).chain());
     }
+}
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
+fn update_status(
+    time: Res<Time>,
+    mut timer: ResMut<GitStatusTimer>,
+    mut git_status: ResMut<GitStatus>,
+) {
+    if !timer.0.tick(time.delta()).just_finished() {
+        return;
+    }
+    git_status.0 = git_status_porcelain();
+}
+
+fn git_status_porcelain() -> Vec<GitStatusFile> {
+    let stdout = Command::new("git")
+        .arg("status")
+        .arg("--porcelain")
+        .output()
+        .unwrap()
+        .stdout;
+    let git_status = str::from_utf8(&stdout).unwrap();
+    println!(".");
+    git_status
+        .lines()
+        .map(format_git_status_file)
+        .collect::<Vec<GitStatusFile>>()
 }
 
 fn mod_color(gsf_state: GitStatusFileState) -> TextColor {
     match gsf_state {
-        GitStatusFileState::Deleted => Color::srgb(0.9, 0., 0.).into(),
-        GitStatusFileState::Modified => Color::srgb(1., 1., 0.).into(),
-        GitStatusFileState::Added => Color::srgb(0., 0., 0.8).into(),
-        GitStatusFileState::NotTracked => Color::srgb(0.6, 0.6, 0.6).into(),
-        GitStatusFileState::ModifiedInBothStages => Color::srgb(0., 0.6, 0.6).into(),
-        GitStatusFileState::AddedThenModified => Color::srgb(0., 0.2, 0.9).into(),
+        GitStatusFileState::Deleted => Color::srgba(0.9, 0., 0., 0.5).into(),
+        GitStatusFileState::Modified => Color::srgba(0.8, 0.8, 0., 0.5).into(),
+        GitStatusFileState::Added => Color::srgba(0.1, 0.2, 0.8, 0.5).into(),
+        GitStatusFileState::NotTracked => Color::srgba(0.6, 0.6, 0.6, 0.5).into(),
+        GitStatusFileState::ModifiedInBothStages => Color::srgba(0., 0.6, 0.6, 0.5).into(),
+        GitStatusFileState::AddedThenModified => Color::srgba(0.4, 0.2, 0.8, 0.5).into(),
     }
 }
 
-fn init_status(mut commands: Commands, status: ResMut<GitStatus>) {
-    println!("init_status");
-    commands.spawn(Camera2d);
+fn spawn_nested_text_bundle(
+    builder: &mut ChildSpawnerCommands,
+    text_font: TextFont,
+    background_color: Color,
+    margin: UiRect,
+    text: &str,
+) {
+    builder
+        .spawn((
+            Node {
+                margin,
+                padding: UiRect::axes(Val::Px(5.), Val::Px(1.)),
+                ..default()
+            },
+            BackgroundColor(background_color),
+        ))
+        .with_children(|builder| {
+            builder.spawn((Text::new(text), text_font, TextColor::BLACK));
+        });
+}
 
+fn show_status(mut commands: Commands, status: Res<GitStatus>) {
     let font_size = 16.0;
     let text_font = TextFont {
         font_size,
@@ -94,34 +136,11 @@ fn init_status(mut commands: Commands, status: ResMut<GitStatus>) {
                     text_font.clone(),
                     *mod_color(x.0.clone()),
                     UiRect::top(Val::Px(3.)),
-                    &x.1,
+                    &format!("{} {}", x.0, x.1),
                 );
             }
         });
 }
-
-fn spawn_nested_text_bundle(
-    builder: &mut ChildSpawnerCommands,
-    text_font: TextFont,
-    background_color: Color,
-    margin: UiRect,
-    text: &str,
-) {
-    builder
-        .spawn((
-            Node {
-                margin,
-                padding: UiRect::axes(Val::Px(5.), Val::Px(1.)),
-                ..default()
-            },
-            BackgroundColor(background_color),
-        ))
-        .with_children(|builder| {
-            builder.spawn((Text::new(text), text_font, TextColor::BLACK));
-        });
-}
-
-fn show_status(mut commands: Commands) {}
 
 fn format_git_status_file(gs_file: &str) -> GitStatusFile {
     let (git_status, git_file) = gs_file.split_at(2);
