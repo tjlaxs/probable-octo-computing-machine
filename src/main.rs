@@ -4,6 +4,9 @@ use std::process::Command;
 #[derive(Resource)]
 struct GitStatus(Vec<GitStatusFile>);
 
+#[derive(Resource, Default, Clone, PartialEq, Component)]
+struct GitStatusUI;
+
 struct GitStatusFile(GitStatusFileState, String);
 
 #[derive(Debug, PartialEq, Clone)]
@@ -110,7 +113,14 @@ fn spawn_nested_text_bundle(
         });
 }
 
-fn show_status(mut commands: Commands, status: Res<GitStatus>) {
+fn show_status(
+    mut commands: Commands,
+    status: Res<GitStatus>,
+    query: Query<Entity, With<GitStatusUI>>,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
     let font_size = 16.0;
     let text_font = TextFont {
         font_size,
