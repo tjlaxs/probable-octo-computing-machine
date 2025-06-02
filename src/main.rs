@@ -56,12 +56,12 @@ impl Plugin for GitStatusPlugin {
 
 fn mod_color(gsf_state: GitStatusFileState) -> TextColor {
     match gsf_state {
-        GitStatusFileState::Deleted => Color::srgb(230., 0., 0.).into(),
-        GitStatusFileState::Modified => Color::srgb(100., 100., 0.).into(),
-        GitStatusFileState::Added => Color::srgb(0., 0., 200.).into(),
-        GitStatusFileState::NotTracked => Color::srgb(150., 150., 150.).into(),
-        GitStatusFileState::ModifiedInBothStages => Color::srgb(0., 150., 150.).into(),
-        GitStatusFileState::AddedThenModified => Color::srgb(0., 50., 250.).into(),
+        GitStatusFileState::Deleted => Color::srgb(0.9, 0., 0.).into(),
+        GitStatusFileState::Modified => Color::srgb(1., 1., 0.).into(),
+        GitStatusFileState::Added => Color::srgb(0., 0., 0.8).into(),
+        GitStatusFileState::NotTracked => Color::srgb(0.6, 0.6, 0.6).into(),
+        GitStatusFileState::ModifiedInBothStages => Color::srgb(0., 0.6, 0.6).into(),
+        GitStatusFileState::AddedThenModified => Color::srgb(0., 0.2, 0.9).into(),
     }
 }
 
