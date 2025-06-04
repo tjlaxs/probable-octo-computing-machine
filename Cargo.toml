@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { path = "/home/tjalxs/git/bevy" } # For now local `main` branch
+bevy = { git = "https://github.com/bevyengine/bevy.git" } # For now local `main` branch
