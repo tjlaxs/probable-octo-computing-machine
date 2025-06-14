@@ -36,6 +36,8 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt, clippy
+      - name: Install Linux dependencies
+        uses: ./.github/actions/install-linux-deps
       - name: Update
         run: cargo update
       - name: Build
@@ -54,9 +56,9 @@ jobs:
           export MESSAGE="chore: regenerate Cargo.lock for $TODAY (UTC)"
           export SHA=$( git rev-parse main:Cargo.lock )
           if git diff --diff-filter=ACMUXTR --name-only | grep -q "^Cargo.lock$"; then \
-          gh api --method PUT /repos/:owner/:repo/contents/Cargo.lock \
-            --field message="$MESSAGE" \
-            --field content=@<( base64 -i Cargo.lock ) \
-            --field branch="main" \
-            --field sha="$SHA"; \
+            gh api --method PUT /repos/:owner/:repo/contents/Cargo.lock \
+              --field message="$MESSAGE" \
+              --field content=@<( base64 -i Cargo.lock ) \
+              --field branch="main" \
+              --field sha="$SHA"; \
           fi
