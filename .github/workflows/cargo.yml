@@ -1,0 +1,62 @@
+name: update deps
+run-name: ${{ github.actor }} running update
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  CARGO_PROFILE_DEV_DEBUG: 0
+  NIGHTLY_TOOLCHAIN: nightly
+  RUSTFLAGS: "-D warning"
+  BINSTALL_VERSION: "v1.12.3"
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db
+            target/
+          key: ${{ runner.os }}-cargo-build-stable-${{ hashFiles('**/Cargo.toml') }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
+      - name: Update
+        run: cargo update
+      - name: Build
+        id: build
+        run: cargo build
+        continue-on-error: true
+        env:
+          RUSTFLAGS: "-C debuginfo=0 -D warnings"
+      - name: Commit
+        continue-on-error: true
+        if: steps.build.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export TODAY=$( date -u '+%Y-%m-%d %H:%M' )
+          export MESSAGE="chore: regenerate Cargo.lock for $TODAY (UTC)"
+          export SHA=$( git rev-parse main:Cargo.lock )
+          if git diff --diff-filter=ACMUXTR --name-only | grep -q "^Cargo.lock$"; then \
+          gh api --method PUT /repos/:owner/:repo/contents/Cargo.lock \
+            --field message="$MESSAGE" \
+            --field content=@<( base64 -i Cargo.lock ) \
+            --field branch="main" \
+            --field sha="$SHA"; \
+          fi
